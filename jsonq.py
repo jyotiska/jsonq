@@ -9,7 +9,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", help="Output Format")
 parser.add_argument("-f", "--filters", help="Filters (can be comma separated)")
 parser.add_argument("-c", "--conditions", help="Condition on filters")
+parser.add_argument("-i", "--inputfile", help="Input File")
 args = parser.parse_args()
+
+if args.inputfile:
+    mode = "file"
+    filename = args.inputfile
+else:
+    mode = "stdin"
+    filename = None
 
 filters = []
 conditions = {}
@@ -33,7 +41,16 @@ if args.conditions:
             symbol = "="
         conditions[split_conditions[0]] = '#!#'.join([symbol, split_conditions[-1]])
 
-for line in sys.stdin.readlines():
+def read_file_generator(mode, filename):
+    if mode == "stdin":
+        for line in sys.stdin.readlines():
+            yield line
+    elif mode == "file":
+        with open(filename) as infile:
+            for line in infile:
+                yield line
+
+for line in read_file_generator(mode, filename):
     if args.conditions:
         condition_flag = False
     else:
@@ -43,7 +60,6 @@ for line in sys.stdin.readlines():
         constructed_json = {}
         if len(filters) > 0:
             for each_filter in filters:
-                each_filter = each_filter[1:]
                 if each_filter in line_json:
                     if each_filter in conditions:
                         if conditions[each_filter].split("#!#")[0] == ">":
